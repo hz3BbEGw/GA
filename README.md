@@ -1,6 +1,6 @@
 # Genetic Algorithm Student Assignment Solver
 
-This project implements a Genetic Algorithm (GA) to solve a student-group assignment problem. It mirrors the interface and features of the CP-SAT based solver.
+This project implements a Genetic Algorithm (GA) to solve a student-group assignment problem.
 
 ## Features
 
@@ -8,7 +8,7 @@ This project implements a Genetic Algorithm (GA) to solve a student-group assign
 - **Fitness Function**: Incorporates hard constraints (group sizes, exclusions, required ratios) and soft constraints (minimizing/maximizing targets with squared penalties).
 - **FastAPI Interface**: Provides a REST API for solving assignment problems.
 - **CLI Tool**: Command-line interface for batch processing JSON files.
-- **Railway Deployment Ready**: Includes `Dockerfile` and `railway.toml`.
+- **Deployment**: Includes `Dockerfile` and `railway.toml`.
 
 ## Local Setup
 
