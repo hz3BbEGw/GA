@@ -31,10 +31,3 @@ This project implements a Genetic Algorithm (GA) to solve a student-group assign
    ```bash
    uv run python -m src.assignment.main --serve
    ```
-
-## Deployment
-
-This project is configured for deployment on Railway. It uses a Dockerfile based on `uv` for efficient builds.
-
-- **Status Output**: Instead of "OPTIMAL", the status field returns `FITNESS: x; INITIAL FITNESS: y` to track convergence.
-- **Mutation**: Utilizes swap mutation to maintain group size constraints effectively.
