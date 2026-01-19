@@ -62,26 +62,20 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
             group_sum = sum(int(student_map[s_id].values.get(c_name, 0) * SCALING_FACTOR) for s_id in student_ids)
             
             for c_config in configs:
-                if c_config.type == CriterionType.CONSTRAINT:
-                    if c_config.min_ratio is not None:
-                        threshold = int(c_config.min_ratio * g.size * SCALING_FACTOR)
-                        if group_sum < threshold:
-                            total_penalty += HARD_CONSTRAINT_PENALTY
-                            
-                elif c_config.type == CriterionType.MINIMIZE:
+                if c_config.type == CriterionType.MINIMIZE:
                     target_sum = int(global_means.get(c_name, 0) * g.size * SCALING_FACTOR)
                     penalty = abs(group_sum - target_sum)
                     total_penalty += penalty
-                        
-                elif c_config.type == CriterionType.BEST_MIN:
-                    if c_config.min_ratio is not None:
-                        threshold = int(c_config.min_ratio * SCALING_FACTOR)
-                        # group_max >= threshold
-                        group_max = max((int(student_map[s_id].values.get(c_name, 0) * SCALING_FACTOR) for s_id in student_ids), default=0)
-                        if group_max < threshold:
-                            total_penalty += HARD_CONSTRAINT_PENALTY
-                            
-                elif c_config.type == CriterionType.WORST_MIN:
+
+                elif c_config.type == CriterionType.PULL:
+                    max_val = 0
+                    for s_id in student_ids:
+                        max_val = max(max_val, int(student_map[s_id].values.get(c_name, 0) * SCALING_FACTOR))
+                    max_sum = max_val * g.size
+                    penalty = max_sum - group_sum
+                    total_penalty += penalty
+
+                elif c_config.type == CriterionType.PREREQUISITE:
                     if c_config.min_ratio is not None:
                         threshold = int(c_config.min_ratio * SCALING_FACTOR)
                         # all students in group must be >= threshold
@@ -90,6 +84,19 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
                             if val < threshold:
                                 total_penalty += HARD_CONSTRAINT_PENALTY
                                 break
+
+    # 4. Rankings objective (maximize total ranking, normalized to avoid dominance)
+    if any(s.rankings for s in problem.students):
+        ranking_scale = max(1, SCALING_FACTOR // max(1, len(criterion_names)))
+        ranking_sum = 0
+        for s_id, g_id in chromosome.genes.items():
+            rankings = student_map[s_id].rankings
+            if not rankings:
+                continue
+            rank_val = rankings.get(g_id, 0.0)
+            ranking_sum += int(rank_val * ranking_scale)
+        ranking_penalty = ranking_scale * len(problem.students) - ranking_sum
+        total_penalty += ranking_penalty
                                 
     chromosome.fitness = total_penalty
     return total_penalty

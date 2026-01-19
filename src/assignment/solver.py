@@ -1,7 +1,96 @@
 import sys
 from tqdm import tqdm
-from .models import ProblemInput, ProblemOutput, AssignmentResult
+from .models import ProblemInput, ProblemOutput, AssignmentResult, CriterionType, ProblemStats, RankingsStats, MinimizeCriterionStats
 from .genetic.population import Population
+
+def _compute_stats(data: ProblemInput, assignments):
+    student_map = {s.id: s for s in data.students}
+    group_students = {g.id: [] for g in data.groups}
+    for assignment in assignments:
+        group_students.setdefault(assignment.group_id, []).append(assignment.student_id)
+
+    rankings_stats = None
+    if any(s.rankings for s in data.students):
+        rank_values = []
+        for assignment in assignments:
+            student = student_map.get(assignment.student_id)
+            if not student or not student.rankings:
+                continue
+            rank_values.append(student.rankings.get(assignment.group_id, 0.0))
+        if rank_values:
+            rankings_stats = RankingsStats(
+                avg_rank=sum(rank_values) / len(rank_values),
+                min_rank=min(rank_values),
+            )
+
+    minimize_groups = {}
+    for g in data.groups:
+        for c_name, configs in g.criteria.items():
+            if any(c.type == CriterionType.MINIMIZE for c in configs):
+                minimize_groups.setdefault(c_name, []).append(g.id)
+
+    minimize_stats = None
+    if minimize_groups:
+        minimize_stats = {}
+        for c_name, group_ids in minimize_groups.items():
+            if data.students:
+                global_mean = sum(s.values.get(c_name, 0) for s in data.students) / len(data.students)
+            else:
+                global_mean = 0.0
+
+            group_avgs = []
+            for g_id in group_ids:
+                student_ids = group_students.get(g_id, [])
+                if not student_ids:
+                    continue
+                total = sum(student_map[s_id].values.get(c_name, 0) for s_id in student_ids)
+                group_avgs.append(total / len(student_ids))
+
+            if len(group_avgs) >= 2:
+                max_group_avg_diff = max(group_avgs) - min(group_avgs)
+            else:
+                max_group_avg_diff = 0.0
+
+            if group_avgs:
+                max_group_global_diff = max(abs(avg - global_mean) for avg in group_avgs)
+            else:
+                max_group_global_diff = 0.0
+
+            minimize_stats[c_name] = MinimizeCriterionStats(
+                max_group_avg_diff=max_group_avg_diff,
+                max_group_global_diff=max_group_global_diff,
+            )
+
+    has_prereq = False
+    prerequisites_ok = True
+    for g in data.groups:
+        for c_name, configs in g.criteria.items():
+            for c_config in configs:
+                if c_config.type != CriterionType.PREREQUISITE or c_config.min_ratio is None:
+                    continue
+                has_prereq = True
+                threshold = c_config.min_ratio
+                for s_id in group_students.get(g.id, []):
+                    if student_map[s_id].values.get(c_name, 0) < threshold:
+                        prerequisites_ok = False
+                        break
+                if not prerequisites_ok:
+                    break
+            if not prerequisites_ok:
+                break
+        if not prerequisites_ok:
+            break
+
+    prerequisites_met = prerequisites_ok if has_prereq else None
+
+    if not rankings_stats and not minimize_stats and prerequisites_met is None:
+        return None
+
+    return ProblemStats(
+        rankings=rankings_stats,
+        minimize=minimize_stats,
+        prerequisites_met=prerequisites_met,
+    )
 
 def _run_single_ga(
     data: ProblemInput,
@@ -68,5 +157,6 @@ def solve_assignment(data: ProblemInput, show_progress: bool = False, runs: int 
 
     return ProblemOutput(
         assignments=assignments,
-        status=status
+        status=status,
+        stats=_compute_stats(data, assignments),
     )

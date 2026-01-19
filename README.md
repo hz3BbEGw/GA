@@ -5,7 +5,7 @@ This project implements a Genetic Algorithm (GA) to solve a student-group assign
 ## Features
 
 - **Genetic Algorithm**: Uses tournament selection, uniform crossover, and swap mutation.
-- **Fitness Function**: Incorporates hard constraints (group sizes, exclusions, required ratios) and soft constraints (minimizing/maximizing targets with squared penalties).
+- **Fitness Function**: Incorporates hard constraints (group sizes, exclusions, prerequisites) and soft constraints (minimizing deviations, pull, and rankings).
 - **FastAPI Interface**: Provides a REST API for solving assignment problems.
 - **CLI Tool**: Command-line interface for batch processing JSON files.
 - **Deployment**: Includes `Dockerfile` and `railway.toml`.

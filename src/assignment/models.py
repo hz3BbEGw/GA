@@ -4,15 +4,14 @@ from pydantic import BaseModel, field_validator
 
 class CriterionType(str, Enum):
     MINIMIZE = "minimize"
-    CONSTRAINT = "constraint"
-    BEST_MIN = "best_min"
-    WORST_MIN = "worst_min"
+    PREREQUISITE = "prerequisite"
+    PULL = "pull"
 
 class CriterionConfig(BaseModel):
     type: CriterionType
-    # For constraint type: at least this ratio of students must meet the criteria
+    # For prerequisite type: all students in group must meet this minimum ratio
     min_ratio: Optional[float] = None
-    # For minimize/maximize: the threshold y
+    # For minimize: the target average (defaults to global mean when omitted)
     target: Optional[float] = None
 
 class GroupConfig(BaseModel):
@@ -34,6 +33,8 @@ class StudentConfig(BaseModel):
     possible_groups: List[int]
     # Mapping of criterion name to value (0.0 to 1.0)
     values: Dict[str, float]
+    # Optional ranking per group_id (0.0 to 1.0, 1.0 is best)
+    rankings: Optional[Dict[int, float]] = None
 
 class ProblemInput(BaseModel):
     num_students: int
@@ -46,6 +47,34 @@ class AssignmentResult(BaseModel):
     student_id: int
     group_id: int
 
+class RankingsStats(BaseModel):
+    avg_rank: Optional[float] = None
+    min_rank: Optional[float] = None
+
+class MinimizeCriterionStats(BaseModel):
+    max_group_avg_diff: float
+    max_group_global_diff: float
+
+class ProblemStats(BaseModel):
+    rankings: Optional[RankingsStats] = None
+    minimize: Optional[Dict[str, MinimizeCriterionStats]] = None
+    prerequisites_met: Optional[bool] = None
+
 class ProblemOutput(BaseModel):
     assignments: List[AssignmentResult]
     status: str
+    stats: Optional[ProblemStats] = None
+
+class DeferredSolveRequest(BaseModel):
+    deferredId: str
+    callbackUrl: str
+    input: ProblemInput
+
+class AckResponse(BaseModel):
+    acknowledged: bool
+    deferredId: str
+
+class CallbackPayload(BaseModel):
+    deferredId: str
+    assignments: Optional[List[AssignmentResult]] = None
+    error: Optional[str] = None
