@@ -4,7 +4,6 @@ from ..models import ProblemInput
 
 class Chromosome:
     def __init__(self, genes: Dict[int, int]):
-        # genes: student_id -> group_id
         self.genes = genes
         self.fitness: float = float('inf')
 
@@ -13,11 +12,9 @@ class Chromosome:
         """Create a size-balanced random assignment respecting possible_groups."""
         genes = {}
         
-        # Remaining capacity per group
         group_sizes = {g.id: g.size for g in problem.groups}
         remaining = group_sizes.copy()
 
-        # Randomize order but place most constrained students first
         student_map = {s.id: s for s in problem.students}
         student_ids = [s.id for s in problem.students]
         random.shuffle(student_ids)
@@ -38,7 +35,6 @@ class Chromosome:
                 best = [g_id for g_id in feasible if remaining[g_id] == max_remaining]
                 chosen = random.choice(best)
             else:
-                # No capacity left in possible groups; fall back to any possible group
                 chosen = random.choice(student.possible_groups)
 
             genes[s_id] = chosen

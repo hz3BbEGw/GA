@@ -9,7 +9,6 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
     total_penalty = 0.0
     student_map = {s.id: s for s in problem.students}
 
-    # Global mean per criterion (used for MINIMIZE targets).
     criterion_names = set()
     for g in problem.groups:
         criterion_names.update(g.criteria.keys())
@@ -34,7 +33,6 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
             total_penalty += diff * HARD_CONSTRAINT_PENALTY
 
     # 2. Exclusion constraints
-    # Group students by group_id
     groups_students: Dict[int, List[int]] = {g.id: [] for g in problem.groups}
     for s_id, g_id in chromosome.genes.items():
         if g_id in groups_students:
@@ -52,13 +50,9 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
     for g in problem.groups:
         student_ids = groups_students[g.id]
         if not student_ids:
-            # If group is empty but size > 0, size penalty already applied
             continue
             
         for c_name, configs in g.criteria.items():
-            # Calculate group sum for this criterion
-            # Scaled to match cpsat logic: sum(scaled_val * x)
-            # scaled_val = int(s.values.get(c_name, 0) * SCALING_FACTOR)
             group_sum = sum(int(student_map[s_id].values.get(c_name, 0) * SCALING_FACTOR) for s_id in student_ids)
             
             for c_config in configs:
@@ -80,17 +74,15 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
                 elif c_config.type == CriterionType.PREREQUISITE:
                     if c_config.min_ratio is not None:
                         threshold = int(c_config.min_ratio * SCALING_FACTOR)
-                        # all students in group must be >= threshold
                         for s_id in student_ids:
                             val = int(student_map[s_id].values.get(c_name, 0) * SCALING_FACTOR)
                             if val < threshold:
                                 total_penalty += HARD_CONSTRAINT_PENALTY
                                 break
 
-    # 4. Rankings objective (maximize total ranking, with specified percentage of total penalty)
+    # 4. Rankings objective
     has_rankings = any(s.rankings for s in problem.students)
     if has_rankings:
-        # Count MINIMIZE and PULL criteria to calculate ranking weight
         num_criteria = 0
         for g in problem.groups:
             for c_name, configs in g.criteria.items():
@@ -98,10 +90,7 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
                     if c_config.type == CriterionType.MINIMIZE or c_config.type == CriterionType.PULL:
                         num_criteria += 1
         
-        # Calculate ranking_weight to achieve target percentage
-        # Formula: ranking_weight = (percentage * num_criteria) / (100 - percentage)
         if num_criteria == 0:
-            # When no other penalties, rankings is the only objective
             ranking_weight = 1.0
         else:
             ranking_percentage = min(problem.ranking_percentage, 99.99)

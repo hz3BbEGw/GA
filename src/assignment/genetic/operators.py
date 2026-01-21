@@ -29,16 +29,13 @@ def swap_mutation(chromosome: Chromosome, problem: ProblemInput, mutation_rate: 
     if len(student_ids) < 2:
         return chromosome
 
-    # Select two random students
     s1_id, s2_id = random.sample(student_ids, 2)
     g1_id = new_genes[s1_id]
     g2_id = new_genes[s2_id]
 
     if g1_id == g2_id:
-        # Swapping within same group does nothing, try finding another
         return chromosome
 
-    # Check if swap is valid according to possible_groups
     student_map = {s.id: s for s in problem.students}
     s1_possible = student_map[s1_id].possible_groups
     s2_possible = student_map[s2_id].possible_groups
@@ -50,7 +47,7 @@ def swap_mutation(chromosome: Chromosome, problem: ProblemInput, mutation_rate: 
     return Chromosome(new_genes)
 
 def random_mutation(chromosome: Chromosome, problem: ProblemInput, mutation_rate: float = 0.1) -> Chromosome:
-    """Standard mutation: change one student's group assignment."""
+    """Change one student's group assignment."""
     if random.random() > mutation_rate:
         return chromosome
 

@@ -37,9 +37,7 @@ class Population:
                 child = parent1.copy()
             
             # Mutation
-            # Use swap mutation as requested, and a bit of random mutation to escape local optima
             child = swap_mutation(child, self.problem, mutation_rate)
-            # child = random_mutation(child, self.problem, mutation_rate * 0.5)
             
             new_population.append(child)
             

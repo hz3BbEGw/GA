@@ -9,9 +9,7 @@ class CriterionType(str, Enum):
 
 class CriterionConfig(BaseModel):
     type: CriterionType
-    # For prerequisite type: all students in group must meet this minimum ratio
     min_ratio: Optional[float] = None
-    # For minimize: the target average (defaults to global mean when omitted)
     target: Optional[float] = None
 
 class GroupConfig(BaseModel):
@@ -22,7 +20,6 @@ class GroupConfig(BaseModel):
     @field_validator('criteria', mode='after')
     @classmethod
     def ensure_list_configs(cls, v):
-        # Normalize all criteria to lists for internal processing
         return {
             name: [config] if isinstance(config, CriterionConfig) else config
             for name, config in v.items()
@@ -31,9 +28,7 @@ class GroupConfig(BaseModel):
 class StudentConfig(BaseModel):
     id: int
     possible_groups: List[int]
-    # Mapping of criterion name to value (0.0 to 1.0)
     values: Dict[str, float]
-    # Optional ranking per group_id (0.0 to 1.0, 1.0 is best)
     rankings: Optional[Dict[int, float]] = None
 
 class ProblemInput(BaseModel):
@@ -41,8 +36,8 @@ class ProblemInput(BaseModel):
     num_groups: int
     groups: List[GroupConfig]
     students: List[StudentConfig]
-    exclude: List[List[int]] = []  # List of student_id pairs that cannot be in the same group
-    ranking_percentage: float = 50.0  # Target percentage of total penalty for rankings (default: 50.0)
+    exclude: List[List[int]] = []
+    ranking_percentage: float = 50.0
 
 class AssignmentResult(BaseModel):
     student_id: int
