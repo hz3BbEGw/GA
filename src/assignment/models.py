@@ -42,6 +42,7 @@ class ProblemInput(BaseModel):
     groups: List[GroupConfig]
     students: List[StudentConfig]
     exclude: List[List[int]] = []  # List of student_id pairs that cannot be in the same group
+    ranking_percentage: float = 50.0  # Target percentage of total penalty for rankings (default: 50.0)
 
 class AssignmentResult(BaseModel):
     student_id: int

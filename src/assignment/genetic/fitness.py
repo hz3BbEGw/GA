@@ -65,7 +65,8 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
                 if c_config.type == CriterionType.MINIMIZE:
                     target_sum = int(global_means.get(c_name, 0) * g.size * SCALING_FACTOR)
                     penalty = abs(group_sum - target_sum)
-                    total_penalty += penalty
+                    scaled_penalty = penalty * g.size
+                    total_penalty += scaled_penalty
 
                 elif c_config.type == CriterionType.PULL:
                     max_val = 0
@@ -73,7 +74,8 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
                         max_val = max(max_val, int(student_map[s_id].values.get(c_name, 0) * SCALING_FACTOR))
                     max_sum = max_val * g.size
                     penalty = max_sum - group_sum
-                    total_penalty += penalty
+                    scaled_penalty = penalty * g.size
+                    total_penalty += scaled_penalty
 
                 elif c_config.type == CriterionType.PREREQUISITE:
                     if c_config.min_ratio is not None:
@@ -85,17 +87,36 @@ def evaluate_fitness(chromosome: Chromosome, problem: ProblemInput) -> float:
                                 total_penalty += HARD_CONSTRAINT_PENALTY
                                 break
 
-    # 4. Rankings objective (maximize total ranking, normalized to avoid dominance)
-    if any(s.rankings for s in problem.students):
-        ranking_scale = max(1, SCALING_FACTOR // max(1, len(criterion_names)))
+    # 4. Rankings objective (maximize total ranking, with specified percentage of total penalty)
+    has_rankings = any(s.rankings for s in problem.students)
+    if has_rankings:
+        # Count MINIMIZE and PULL criteria to calculate ranking weight
+        num_criteria = 0
+        for g in problem.groups:
+            for c_name, configs in g.criteria.items():
+                for c_config in configs:
+                    if c_config.type == CriterionType.MINIMIZE or c_config.type == CriterionType.PULL:
+                        num_criteria += 1
+        
+        # Calculate ranking_weight to achieve target percentage
+        # Formula: ranking_weight = (percentage * num_criteria) / (100 - percentage)
+        if num_criteria == 0:
+            # When no other penalties, rankings is the only objective
+            ranking_weight = 1.0
+        else:
+            ranking_percentage = min(problem.ranking_percentage, 99.99)
+            ranking_weight = (ranking_percentage * num_criteria) / (100 - ranking_percentage)
+        
+        ranking_scale = SCALING_FACTOR
+        weighted_ranking_scale = int(ranking_scale * ranking_weight)
         ranking_sum = 0
         for s_id, g_id in chromosome.genes.items():
             rankings = student_map[s_id].rankings
             if not rankings:
                 continue
             rank_val = rankings.get(g_id, 0.0)
-            ranking_sum += int(rank_val * ranking_scale)
-        ranking_penalty = ranking_scale * len(problem.students) - ranking_sum
+            ranking_sum += int(rank_val * weighted_ranking_scale)
+        ranking_penalty = weighted_ranking_scale * len(problem.students) - ranking_sum
         total_penalty += ranking_penalty
                                 
     chromosome.fitness = total_penalty
